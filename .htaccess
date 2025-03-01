@@ -1,5 +1,7 @@
 RewriteEngine On
 
+ErrorDocument 404 /404.php
+
 RewriteRule ^tv/?$ tv.php [L,QSA]
 RewriteRule ^movies/?$ movies.php [L,QSA]
 RewriteRule ^trending-movies/?$ trending-movies.php [L,QSA]
