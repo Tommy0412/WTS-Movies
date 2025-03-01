@@ -1,71 +1,125 @@
 <?php
-//include files
+// Include files
 include_once 'includes/config.php';
 include_once 'includes/functions.php';
-//Get data
+
+// Get data
 $latesttv = $APIbaseURL . $trendingtvday . $api_key . $language;
-if (empty($_GET['id'])) {
+
+if (empty($_GET['id']) || empty($_GET['season']) || empty($_GET['episode'])) {
     die('NOT FOUND');
 }
+
 $getid = $_GET['id'];
 $getseason = $_GET['season'];
 $getepisode = $_GET['episode'];
-$gettv =  $APIbaseURL . $tv . $getid . $api_key . $language . "&append_to_response=external_ids";
-//handle errors
-$headers = get_headers($gettv);
-if (stripos($headers[0], '40') !== false || stripos($headers[0], '50') !== false) {
+
+$gettv = $APIbaseURL . $tv . $getid . $api_key . $language . "&append_to_response=external_ids";
+$getepisodes = $APIbaseURL . $tv . $getid . "/season/" . $getseason . $api_key . $language;
+
+// Function to fetch data using cURL
+function fetchDataWithCurl($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable SSL host verification
+
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        error_log('cURL error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    // Check HTTP status code
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        error_log("HTTP error: $httpCode for URL: $url");
+        return false;
+    }
+
+    return $response;
+}
+
+// Fetch latest TV shows using cURL
+$ambil = fetchDataWithCurl($latesttv);
+
+// Handle errors
+if ($ambil === false) {
     include '404.php';
     exit();
 }
-$getepisodes =  $APIbaseURL . $tv . $getid . "/season/" . $getseason . $api_key . $language;
-//handle errors
-$headers = get_headers($getepisodes);
-if (stripos($headers[0], '40') !== false || stripos($headers[0], '50') !== false) {
+
+// Fetch current TV show details using cURL
+$ambilgettv = fetchDataWithCurl($gettv);
+
+// Handle errors
+if ($ambilgettv === false) {
     include '404.php';
     exit();
 }
-$arrContextOptions = array(
-    "ssl" => array(
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ),
-);
-$ambil = file_get_contents($latesttv, false, stream_context_create($arrContextOptions));
-$ambilgettv = file_get_contents($gettv, false, stream_context_create($arrContextOptions));
-$ambilgetepisodes = file_get_contents($getepisodes, false, stream_context_create($arrContextOptions));
+
+// Fetch episode details using cURL
+$ambilgetepisodes = fetchDataWithCurl($getepisodes);
+
+// Handle errors
+if ($ambilgetepisodes === false) {
+    include '404.php';
+    exit();
+}
+
+// Decode JSON responses
 $latesttvs = json_decode($ambil, true);
 $currenttv = json_decode($ambilgettv, true);
 $currenttvepisodes = json_decode($ambilgetepisodes, true);
-//incfunc
-if(!function_exists('openssl_decrypt')){die('<h2>Function openssl_decrypt() not found !</h2>');}
-if(!defined('_FILE_')){define("_FILE_",getcwd().DIRECTORY_SEPARATOR.basename($_SERVER['PHP_SELF']),false);}
-if(!defined('_DIR_')){define("_DIR_",getcwd(),false);}
-if(file_exists('includes/key.inc.php')){include_once('includes/key.inc.php');}else{die('<h2>File key.inc.php not found !</h2>');}
-$e7091="VDdMZXJiTzhyb2tvYVNTcEFkM1ZNUHNMZklBRUQrbmxmMWxOUXBkNENUSjJqVklqV0trbkJRck5wZnRSR1c0RVp3SDd6T1RTT3hlRy9QUEZtNGFNcWdnUlNzN1l5dUpzM0pxT1N0VGZySWx5YjhUeXVTUGdKT3RmQjhLVytCdzRucWpuRXIzSk5wNkFCNFNzTVNHc045ZEhtOUQyVG9aTTBvaGgzdThvdldmMlRWbERsNUpULzRtQ1ZZTU01Q1dXN2dJZEhYUldoc0pMcWR1VjZ1YUdvbDE1MC94Uk0zZUNtbEVkZFR1eHFUMEg1bUE1TVVhMEJJRUY3L3B4RVdHeDd2QXkrZDBTNGtzVEpDSnJ4MDk0SzdGSWZEUVhLb2d2ZTl2Y0YySXFWRHR4NGh4Qkw4MytrZVJoZHZ2RFhTWGY1L3ZDcmNtcFE3YnVhTXZnUmtRQU5TaVRQclhLcGVMOEp6SXdvVlpROThrY3dCRThORjl0Qk1Vc1JQZ0FTbFBtNEtNYktoaHFsZzh0RTR0MW5iQ1pBekRwOGlHYmhKK0ppNEZIWlZsbjlwMjcwUUFkSTVvVEVqOHA3VnVRUWNkb2JRSzRuYzk4clA3Q21aanIyektzNDNCRnNKMUJGSzlJbEpNTkc3bGNwekxzWVo5ZkpSN0p3RFRwdVRpY1FhdExvRUV2VFlweUhoNlp5R0RVS29OT2d6Z2d4OXdFWmFZQjFOMGZXb0NCbzZYZDdMTG91bjJ4STluZ3BrQnVhNXhpeCtMRXdxQmkrSERaNnRxa3EwSVRVbWcvejBtRlJreThQR0JZdzdDTUNYdGs3V1RrYUlUV05CTmtIWWtXOW5raGFBWXo5cU5IWjA2N25OdHFKV3I2SEtpaHNnRis4RTBtYnNwaTgzYmlGdFYrSEpwRXg0RzFjRklIRVdSbmZ3T1Nwd3IrVCtlOGRyZkJxN2plbzJnZDVjTlJlSzdJUU1FaFpMTnZTRFlBLzJnPQ==";eval(e7061($e7091));
-//Number of results to show in Trending
+
+// Define constants
+if (!defined('_FILE_')) {
+    define("_FILE_", getcwd() . DIRECTORY_SEPARATOR . basename($_SERVER['PHP_SELF']), false);
+}
+if (!defined('_DIR_')) {
+    define("_DIR_", getcwd(), false);
+}
+
+// Generate autoembed and trailer URLs
+$autoembed = "https://vidsrc.net/embed/tv/" . $getid . "/" . $getseason . "/" . $getepisode . "/";
+$trailer = 'https://'.$Domainname.'/trailer_tv.php?id='.$getid.'';
+
+// Number of results to show in Trending
 $trendng = 18;
-//page title
+
+// Page title
 $metatitle = "Watch " . $currenttv['name'] . " - season " . $getseason . " Episode " . $getepisode . " online";
-//canonical
-$canonical = "episodes/".$getid."-".$getseason."-".$getepisode."/".slugify($currenttv['name'])."-season-".$getseason."-episode-".$getepisode;
-//page description
+
+// Canonical URL
+$canonical = "episodes/" . $getid . "-" . $getseason . "-" . $getepisode . "/" . slugify($currenttv['name']) . "-season-" . $getseason . "-episode-" . $getepisode;
+
+// Page description
 $dde = RemoveSpecialChar($currenttv['overview']);
 $pagedesc = "Watch " . $currenttv['name'] . " - season " . $getseason . " Episode " . $getepisode . " in HD with subtitles, " . $dde;
-//Trim descrition to only 150 characters
+
+// Trim description to only 150 characters
 $metadesc = substr($pagedesc, 0, 150) . "..";
-//Page image
-$metaimg = "https://image.tmdb.org/t/p/original".$currenttv['backdrop_path'];
-//metaschema
+
+// Page image
+$metaimg = "https://image.tmdb.org/t/p/original" . $currenttv['backdrop_path'];
+
+// Meta schema
 $metaschema = '<script type="application/ld+json">
         {
             "@context": "https://schema.org",
             "@type": "WebSite",
-            "url": "https://'.$Domainname.'/",
+            "url": "https://' . $Domainname . '/",
             "potentialAction": {
                 "@type": "SearchAction",
                 "target": {
                 "@type": "EntryPoint",
-                "urlTemplate": "https://'.$Domainname.'/search/{search_term_string}"
+                "urlTemplate": "https://' . $Domainname . '/search/{search_term_string}"
                 },
                 "query-input": "required name=search_term_string"
             }
@@ -75,35 +129,35 @@ $metaschema = '<script type="application/ld+json">
         {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
-            "@id": "https://'.$Domainname.'/tv/'.$getid.'/'.slugify($currenttv['name']).'",
-            "name": "'.$metatitle.'",
+            "@id": "https://' . $Domainname . '/tv/' . $getid . '/' . slugify($currenttv['name']) . '",
+            "name": "' . $metatitle . '",
             "itemListElement": [{
                     "@type": "ListItem",
                     "position": 1,
                     "name": "Home",
-                    "item": "https://'.$Domainname.'"
+                    "item": "https://' . $Domainname . '"
                 },
                 {
                     "@type": "ListItem",
                     "position": 2,
-                    "name": "tv",
-                    "item": "https://'.$Domainname.'/tv"
+                    "name": "TV",
+                    "item": "https://' . $Domainname . '/tv"
                 },
                 {
                     "@type": "ListItem",
                     "position": 3,
-                    "name": "'.$currenttv['name'].'",
-                    "item": "https://'.$Domainname.'/tv/'.$getid.'/'.slugify($currenttv['name']).'"
+                    "name": "' . $currenttv['name'] . '",
+                    "item": "https://' . $Domainname . '/tv/' . $getid . '/' . slugify($currenttv['name']) . '"
                 },
                 {
                     "@type": "ListItem",
                     "position": 4,
-                    "name": "Season '.$getseason.' Episode '.$getepisode.'",
-                    "item": "https://'.$Domainname.'/episodes/'.$getid.'-'.$getseason.'-'.$getepisode.'/'.slugify($currenttv['name']).'-season-'.$getseason.'-episode-'.$getepisode.'"
+                    "name": "Season ' . $getseason . ' Episode ' . $getepisode . '",
+                    "item": "https://' . $Domainname . '/episodes/' . $getid . '-' . $getseason . '-' . $getepisode . '/' . slugify($currenttv['name']) . '-season-' . $getseason . '-episode-' . $getepisode . '"
                 }
             ]
         }
-    </script>'
+    </script>';
 ?>
 <?php include_once 'includes/header.php'; ?> 
         <div id="container">
@@ -122,8 +176,6 @@ $metaschema = '<script type="application/ld+json">
                                     <a href="javascript:;" data-src="<?php echo $trailer; ?>" id="trailer" title="<?php echo $currenttv["name"]; ?> trailer"><i class="fas fa-play-circle"></i> Watch Trailer</a>
                                     <a style="display:none"  id="loading">Loading...</a>
                                     <a href="javascript:;" data-src="<?php echo $autoembed; ?>" id="watchm" style="display:none" title="<?php echo $currenttv["name"]; ?> watch now"><i class="fas fa-play-circle"></i> Watch Episode</a>
-                                    <a href="javascript:;" data-src="<?php echo $torrent; ?>" id="torrent" title="Download torrent <?php echo $currenttv["name"]; ?>"><i class="fas fa-download"></i> Download torrent</a>
-                                    <a href="javascript:;" data-src="<?php echo $subtitles; ?>" id="subtitle" title="Download Subtitle <?php echo $currenttv["name"]; ?>"><i class="fas fa-download"></i> Download subtitle</a>
                                 </div>
                                 <div class="clr"></div>
                                 <div class="rgt">

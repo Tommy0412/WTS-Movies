@@ -1,23 +1,60 @@
 <?php
-//include files
+// Include files
 include_once 'includes/config.php';
 include_once 'includes/functions.php';
 
+// Popular TV Shows API URL
 $populartv = $APIbaseURL . $tv . $popular . $api_key . $language;
+
+// Handle pagination
 if (isset($_GET['page'])) {
     $populartv = $APIbaseURL . $tv . $popular . $api_key . $language . "&page=" . $_GET['page'];
 }
-$arrContextOptions = array(
-    "ssl" => array(
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ),
-);
-$ambil = file_get_contents($populartv, false, stream_context_create($arrContextOptions));
+
+// Function to fetch data using cURL
+function fetchDataWithCurl($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable SSL host verification
+
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        error_log('cURL error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    // Check HTTP status code
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        error_log("HTTP error: $httpCode for URL: $url");
+        return false;
+    }
+
+    return $response;
+}
+
+// Fetch popular TV shows using cURL
+$ambil = fetchDataWithCurl($populartv);
+
+// Handle errors
+if ($ambil === false) {
+    include '404.php';
+    exit();
+}
+
+// Decode JSON response
 $pplrtv = json_decode($ambil, true);
+
 /*----meta---*/
 $canonical = "tv";
-$metatitle = 'TV Shows - '.$SiteTitle;
+$metatitle = 'TV Shows - ' . $SiteTitle;
 $metadesc = 'Watch and download latest movies and TV Shows for free in HD streaming with multiple language subtitles.';
 ?>
 <?php include_once 'includes/header.php'; ?>

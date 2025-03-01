@@ -1,39 +1,77 @@
 <?php
-//include files
+// Include files
 include_once 'includes/config.php';
 include_once 'includes/functions.php';
 
-if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
-{
-    if(empty($_GET['keyword'])){
-        
-    $noresult = [
-        'content' => ''
-    ];
-    echo json_encode($noresult);
-    die();
+if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+    if (empty($_GET['keyword'])) {
+        $noresult = [
+            'content' => ''
+        ];
+        echo json_encode($noresult);
+        die();
     }
 }
 
 // Latest Update SUB
 $searchquery = $APIbaseURL . $searchmovie . $api_key . "&query=" . urlencode($_GET['keyword']);
 $searchquerytv = $APIbaseURL . $searchtv . $api_key . "&query=" . urlencode($_GET['keyword']);
+
 if (isset($_GET['page'])) {
     $searchquery = $APIbaseURL . $searchmovie . $api_key . "&query=" . urlencode($_GET['keyword']) . "&page=" . $_GET['page'];
     $searchquerytv = $APIbaseURL . $searchtv . $api_key . "&query=" . urlencode($_GET['keyword']) . "&page=" . $_GET['page'];
 }
-$arrContextOptions = array(
-    "ssl" => array(
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ),
-);
-$ambil = file_get_contents($searchquery, false, stream_context_create($arrContextOptions));
-$ambiltv = file_get_contents($searchquerytv, false, stream_context_create($arrContextOptions));
+
+// Function to fetch data using cURL
+function fetchDataWithCurl($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable SSL host verification
+
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        error_log('cURL error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    // Check HTTP status code
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        error_log("HTTP error: $httpCode for URL: $url");
+        return false;
+    }
+
+    return $response;
+}
+
+// Fetch search results for movies using cURL
+$ambil = fetchDataWithCurl($searchquery);
+
+// Fetch search results for TV shows using cURL
+$ambiltv = fetchDataWithCurl($searchquerytv);
+
+// Handle errors
+if ($ambil === false || $ambiltv === false) {
+    $noresult = [
+        'content' => ''
+    ];
+    echo json_encode($noresult);
+    die();
+}
+
+// Decode JSON responses
 $searchresults = json_decode($ambil, true);
 $searchresultstv = json_decode($ambiltv, true);
+
 /*----meta---*/
-$metatitle = $SiteTitle.'- search result';
+$metatitle = $SiteTitle . ' - Search Result';
 $metadesc = 'Search movies and TV shows.';
 ?>
 <?php include_once 'includes/header.php'; ?>

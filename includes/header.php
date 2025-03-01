@@ -65,8 +65,6 @@
                     <li><a href="/tv"><i class="fas fa-tv"></i><div class="mvs">TV Shows</div></a></li>
                     <li><a href="/trending-tv"><i class="fas fa-chart-line"></i></i><div class="mvs">Trending TV Shows</div></a></li>
                     <li><a href="/top-rated-tv"><i class="fas fa-star"></i></i><div class="mvs">Top Rated TV Shows</div></a></li>
-                    <li><a href="https://autoembed.to/#embed-movies"><i class="fas fa-link"></i></i><div class="mvs">Auto Embed Movies</div></a></li>
-                    <li><a href="https://autoembed.to/#embed-tv-shows"><i class="fas fa-link"></i></i><div class="mvs">Auto Embed TV Shows</div></a></li>
                 </ul>
             </div>
         </div> 

@@ -1,21 +1,41 @@
 <?php
-//include files
+// Include files
 include_once 'includes/config.php';
 include_once 'includes/functions.php';
 
+// Get the ID from the query string
 $getseasons = $_GET['id'];
+
+// Construct the API URL
 $gtseasons = $APIbaseURL . $tv . $getseasons . $api_key . $language;
-$arrContextOptions = array(
-    "ssl" => array(
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ),
-);
-$ambil = file_get_contents($gtseasons, false, stream_context_create($arrContextOptions));
+
+// Initialize cURL session
+$ch = curl_init();
+
+// Set cURL options
+curl_setopt($ch, CURLOPT_URL, $gtseasons); // Set the URL
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // Return the response as a string
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL peer verification
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable SSL host verification
+
+// Execute cURL request
+$ambil = curl_exec($ch);
+
+// Check for cURL errors
+if (curl_errno($ch)) {
+    echo 'cURL error: ' . curl_error($ch);
+    exit();
+}
+
+// Close cURL session
+curl_close($ch);
+
+// Decode the JSON response
 $shwseason = json_decode($ambil, true);
+
 /*----meta---*/
-$canonical = "tv/".$getseasons."/".slugify($shwseason["name"]);
-$metatitle = $SiteTitle.'- Watch Movies and TV series online for free';
+$canonical = "tv/" . $getseasons . "/" . slugify($shwseason["name"]);
+$metatitle = $SiteTitle . '- Watch Movies and TV series online for free';
 $metadesc = 'Watch and download latest movies and TV Shows for free in HD streaming with multiple language subtitles.';
 ?>
 <?php include_once 'includes/header.php'; ?>

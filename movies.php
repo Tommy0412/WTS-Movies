@@ -1,29 +1,60 @@
 <?php
-//include files
+// Include files
 include_once 'includes/config.php';
 include_once 'includes/functions.php';
 
 // Latest Update SUB
 $popularmovies = $APIbaseURL . $movie . $popular . $api_key . $language;
+
+// Handle pagination
 if (isset($_GET['page'])) {
     $popularmovies = $APIbaseURL . $movie . $popular . $api_key . $language . "&page=" . $_GET['page'];
 }
-$headers = get_headers($popularmovies);
-if (stripos($headers[0], '40') !== false || stripos($headers[0], '50') !== false) {
+
+// Function to fetch data using cURL
+function fetchDataWithCurl($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL verification
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Disable SSL host verification
+
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        error_log('cURL error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    // Check HTTP status code
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        error_log("HTTP error: $httpCode for URL: $url");
+        return false;
+    }
+
+    return $response;
+}
+
+// Fetch popular movies using cURL
+$ambil = fetchDataWithCurl($popularmovies);
+
+// Handle errors
+if ($ambil === false) {
     include '404.php';
     exit();
 }
-$arrContextOptions = array(
-    "ssl" => array(
-        "verify_peer" => false,
-        "verify_peer_name" => false,
-    ),
-);
-$ambil = file_get_contents($popularmovies, false, stream_context_create($arrContextOptions));
+
+// Decode JSON response
 $pplrmvs = json_decode($ambil, true);
+
 /*----meta---*/
 $canonical = "movies";
-$metatitle = $SiteTitle.'- Watch Movies and TV series online for free';
+$metatitle = $SiteTitle . ' - Watch Movies and TV series online for free';
 $metadesc = 'Watch and download latest movies and TV Shows for free in HD streaming with multiple language subtitles.';
 ?>
 <?php include_once 'includes/header.php'; ?>
